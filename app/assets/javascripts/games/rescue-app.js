@@ -10,6 +10,6 @@
 // Read Sprockets README (https://github.com/sstephenson/sprockets#sprockets-directives) for details
 // about supported directives.
 //
-//= require phaser.min
+//= require phaser
 //= require games/rescue-settings
 //= require games/rescue
