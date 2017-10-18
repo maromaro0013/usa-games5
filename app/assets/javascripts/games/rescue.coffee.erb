@@ -1,0 +1,279 @@
+# Place all the behaviors and hooks related to the matching controller here.
+# All this logic will automatically be available in application.js.
+# You can use CoffeeScript in this file: http://coffeescript.org/
+
+GameMain = ->
+  m_game_scale = 1.0
+  m_field = ""
+  m_stage_num = 0
+  m_solve_arr = ""
+  m_move_timer_event = ""
+
+  FixViewPort = ->
+    m_game_scale = window.innerHeight / CANVAS_HEIGHT
+    if (window.innerWidth / CANVAS_WIDTH) < (window.innerHeight / CANVAS_HEIGHT)
+      m_game_scale = window.innerWidth / CANVAS_WIDTH
+
+  update_field_buff = (f)->
+    f.buff = []
+    for y in [0..f.h - 1]
+      f.buff[y] = []
+      for x in [0..f.w - 1]
+        f.buff[y][x] = 0
+
+    for key,panel of f.panels
+      img = panel.image
+      for y in [img.idx_y..img.idx_y+panel.h - 1]
+        for x in [img.idx_x..img.idx_x+panel.w - 1]
+          f.buff[y][x] = 1
+
+  panel_drag_update = (sprite, pointer, drag_x, drag_y, snapPoint) ->
+    next_x = sprite.x
+    next_y = sprite.y
+    before_x = sprite.before_x
+    before_y = sprite.before_y
+    max_x = FIELD_OFS_X + (m_field.w - sprite.panel_w)*(ONE_WIDTH + OFS_PANEL_TO_PANEL)
+    max_y = FIELD_OFS_Y + (m_field.h - sprite.panel_h)*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+
+    w0 = sprite.width
+    h0 = sprite.height
+
+    # 貫通防止 (1*1パネル分しか移動できないようにする)
+    if Math.abs(next_x - before_x) > (ONE_WIDTH + OFS_PANEL_TO_PANEL)
+      sprite.x = before_x
+    if Math.abs(next_y - before_y) > (ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+      sprite.y = before_y
+
+    if sprite.x < FIELD_OFS_X
+      sprite.x = FIELD_OFS_X
+    if sprite.y < FIELD_OFS_Y
+      sprite.y = FIELD_OFS_Y
+    if sprite.x > max_x
+      sprite.x = max_x
+    if sprite.y > max_y
+      sprite.y = max_y
+
+    for key,panel of m_field.panels
+      if key == sprite.idx
+        continue
+      img = panel.image
+      w1 = img.width
+      h1 = img.height
+      if ( (next_x        < img.x + w1) &&
+         (  next_x   + w0 > img.x     ) &&
+         (  before_y      < img.y + h1) &&
+         (  before_y + h0 > img.y     ))
+        sprite.x = before_x
+        break
+
+    for key,panel of m_field.panels
+      if key == sprite.idx
+        continue
+      img = panel.image
+      w1 = img.width
+      h1 = img.height
+      if ( (before_x      < img.x + w1) &&
+         (  before_x + w0 > img.x     ) &&
+         (  next_y        < img.y + h1) &&
+         (  next_y + h0   > img.y     ))
+        sprite.y = before_y
+        #sprite.y = (img.idx_y - sprite.panel_h)*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+        break
+
+    sprite.before_x = sprite.x
+    sprite.before_y = sprite.y
+
+  panel_set_pos = (sprite) ->
+    sprite.x = FIELD_OFS_X + sprite.idx_x*(ONE_WIDTH + OFS_PANEL_TO_PANEL)
+    sprite.y = FIELD_OFS_Y + sprite.idx_y*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+    sprite.before_x = sprite.x
+    sprite.before_y = sprite.y
+
+  panel_set_idx = (sprite) ->
+    min_x = 9999999
+    min_y = 9999999
+    for x in [0..m_field.w - 1]
+      tmp_x = FIELD_OFS_X + x*(ONE_WIDTH + OFS_PANEL_TO_PANEL)
+      if Math.abs(tmp_x - sprite.x) < min_x
+        min_x = Math.abs(tmp_x - sprite.x)
+        sprite.idx_x = x
+
+    for y in [0..m_field.h - 1]
+      tmp_y = FIELD_OFS_Y + y*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+      if Math.abs(tmp_y - sprite.y) < min_y
+        min_y = Math.abs(tmp_y - sprite.y)
+        sprite.idx_y = y
+
+  panel_drag_stop = (sprite, pointer) ->
+    panel_set_idx(sprite)
+    sprite.x = FIELD_OFS_X + sprite.idx_x*(ONE_WIDTH + OFS_PANEL_TO_PANEL)
+    sprite.y = FIELD_OFS_Y + sprite.idx_y*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+    sprite.before_x = sprite.x
+    sprite.before_y = sprite.y
+    update_field_buff(m_field)
+
+  create_panels_from_json = (field_json)->
+    m_field = new Object
+    m_field.w = field_json["framesize"]["w"]
+    m_field.h = field_json["framesize"]["h"]
+    m_field.end_x = field_json["endpoint"]["x"]
+    m_field.end_y = field_json["endpoint"]["y"]
+    m_field.panels = []
+
+    for key,panel of field_json["panels"]
+      m_field.panels.push(panel)
+
+      x = FIELD_OFS_X + m_field.panels[key].x*(ONE_WIDTH + OFS_PANEL_TO_PANEL)
+      y = FIELD_OFS_Y + m_field.panels[key].y*(ONE_HEIGHT + OFS_PANEL_TO_PANEL)
+
+      if m_field.panels[key].w == 1 && m_field.panels[key].h == 1
+        m_field.panels[key].image = game.add.sprite(x, y, "11_0")
+      if m_field.panels[key].w == 2 && m_field.panels[key].h == 1
+        m_field.panels[key].image = game.add.sprite(x, y, "21_0")
+      if m_field.panels[key].w == 1 && m_field.panels[key].h == 2
+        m_field.panels[key].image = game.add.sprite(x, y, "12_0")
+      if m_field.panels[key].w == 2 && m_field.panels[key].h == 2
+        m_field.panels[key].image = game.add.sprite(x, y, "22_0")
+
+      m_field.panels[key].image.idx = key
+      m_field.panels[key].image.idx_x = m_field.panels[key].x
+      m_field.panels[key].image.idx_y = m_field.panels[key].y
+      m_field.panels[key].image.panel_w = m_field.panels[key].w
+      m_field.panels[key].image.panel_h = m_field.panels[key].h
+      m_field.panels[key].image.before_x = m_field.panels[key].image.x
+      m_field.panels[key].image.before_y = m_field.panels[key].image.y
+      m_field.panels[key].image.inputEnabled = true
+      m_field.panels[key].image.input.enableDrag true
+      m_field.panels[key].image.events.onDragUpdate.add(panel_drag_update)
+      m_field.panels[key].image.events.onDragStop.add(panel_drag_stop, this);
+
+    update_field_buff m_field
+
+  panel_timer_move = ->
+    move = m_solve_arr.shift()
+    console.log move
+
+    idx = move["index"]
+    switch move["action"]
+      when "UP"
+        m_field.panels[idx].image.idx_y -= 1
+      when "DOWN"
+        m_field.panels[idx].image.idx_y += 1
+      when "LEFT"
+        m_field.panels[idx].image.idx_x -= 1
+      when "RIGHT"
+        m_field.panels[idx].image.idx_x += 1
+
+    panel_set_pos m_field.panels[idx].image
+
+    if m_solve_arr.length <= 0
+      game.time.events.remove(m_move_timer_event)
+
+  touch_restart_button = ->
+    location.reload()
+
+  touch_escape_button = ->
+    bmd = game.add.bitmapData(1,　1)
+    bmd.ctx.beginPath()
+    bmd.ctx.rect(0, 0, 1, 1)
+    bmd.ctx.fillStyle = '#000000'
+    bmd.ctx.fill()
+    black_sprite = game.add.sprite(0, 0, bmd);
+    black_sprite.scale.x = CANVAS_WIDTH
+    black_sprite.scale.y = CANVAS_HEIGHT
+    black_sprite.alpha = 0.5
+    black_sprite.inputEnabled = true
+
+    data = {}
+    data["framesize"] = {}
+    data["framesize"]["w"] = m_field.w
+    data["framesize"]["h"] = m_field.h
+    data["endpoint"] = {}
+    data["endpoint"]["x"] = m_field.end_x
+    data["endpoint"]["y"] = m_field.end_y
+    data["panels"] = []
+    for key,panel of m_field.panels
+      img = panel.image
+      info = {}
+      info["x"] = img.idx_x
+      info["y"] = img.idx_y
+      info["w"] = panel.w
+      info["h"] = panel.h
+      info["type"] = panel.type
+      data["panels"].push info
+
+    $.ajax({
+      url: '/games/rescue/hakoirisolver'
+      type: 'post',
+      data: {field_data: data},
+      dataType: 'json',
+      success: (ret)->
+        m_solve_arr = ret.concat()
+        m_move_timer_event = game.time.events.loop(200, panel_timer_move, this)
+        black_sprite.kill()
+    })
+
+  preload = ->
+    game.time.advancedTiming = true
+
+    game.load.image('bg', '<%= image_path("games/rescue/bg.png") %>')
+    game.load.image('11_0', '<%= image_path("games/rescue/panel_11_0.png") %>')
+    game.load.image('11_1', '<%= image_path("games/rescue/panel_11_1.png") %>')
+    game.load.image('12_0', '<%= image_path("games/rescue/panel_12_0.png") %>')
+    game.load.image('12_1', '<%= image_path("games/rescue/panel_12_1.png") %>')
+    game.load.image('21_0', '<%= image_path("games/rescue/panel_21_0.png") %>')
+    game.load.image('21_1', '<%= image_path("games/rescue/panel_21_1.png") %>')
+    game.load.image('22_0', '<%= image_path("games/rescue/panel_22_0.png") %>')
+
+    game.load.image('restart_btn', '<%= image_path("games/rescue/restart_btn.png") %>')
+    game.load.image('retire_btn', '<%= image_path("games/rescue/retire_btn.png") %>')
+    game.load.image('escape_btn', '<%= image_path("games/rescue/escape_btn.png") %>')
+
+  create = ->
+    game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE
+    FixViewPort()
+    game.scale.setUserScale(m_game_scale, m_game_scale, 0, 0)
+    game.scale.updateLayout()
+
+    game.stage.backgroundColor = BG_COLOR
+    game.add.image(BG_X, BG_Y, 'bg')
+
+    level = $("#rescue_level").html()
+    switch level
+      when "1"
+        create_panels_from_json JSON.parse STAGE1_DATA
+      when "2"
+        create_panels_from_json JSON.parse STAGE2_DATA
+      when "3"
+        create_panels_from_json JSON.parse STAGE3_DATA
+      else
+        create_panels_from_json JSON.parse STAGE1_DATA
+
+    restart_btn = game.add.image(RESTART_X, RESTART_Y, 'restart_btn')
+    restart_btn.inputEnabled = true
+    restart_btn.events.onInputDown.add(touch_restart_button)
+
+    retire_btn = game.add.image(RETIRE_X, RETIRE_Y, 'retire_btn')
+
+    escape_btn = game.add.image(ESCAPE_X, ESCAPE_Y, 'escape_btn')
+    escape_btn.inputEnabled = true
+    escape_btn.events.onInputDown.add(touch_escape_button)
+
+  render = ->
+    ###
+    yi = 32
+    y = 0
+    game.debug.text('fps : ' + game.time.fps, 0, y += yi)
+    game.debug.text('scale : ' + m_game_scale, 0, y += yi)
+    ###
+
+  update = ->
+
+  window['PhaserGlobal'] = []
+  window['PhaserGlobal'].disableAudio = true
+
+  game = new Phaser.Game(CANVAS_WIDTH, CANVAS_HEIGHT, Phaser.CANVAS, 'phaser-rescue', { preload, create, update, render }, false, false, null)
+
+$(document).on('ready page:load', ->
+  GameMain()
+)

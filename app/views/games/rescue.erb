@@ -1,0 +1,11 @@
+<% content_for :add_css_include do %>
+	<%= stylesheet_link_tag 'games/rescue-app', media: 'all' %>
+<% end %>
+
+<% content_for :add_js_include do %>
+	<%= javascript_include_tag 'games/rescue-app' %>
+<% end %>
+
+<span id="rescue_level"><%= @rescue_level %></span>
+
+<div id="phaser-rescue"></div>

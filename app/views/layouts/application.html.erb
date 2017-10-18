@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>UsaGames5</title>
-    <%= csrf_meta_tags %>
+<head>
+  <title>UsaGames</title>
+  <%= stylesheet_link_tag    'application', media: 'all' %>
+  <%= yield :add_css_include %>
 
-    <%= stylesheet_link_tag    'application', media: 'all' %>
-    <%= javascript_include_tag 'application' %>
-  </head>
+  <%= javascript_include_tag 'application' %>
+  <%= yield :add_js_include %>
 
-  <body>
-    <%= yield %>
-  </body>
+  <%= favicon_link_tag 'common/favicon.ico' %>
+
+  <%= csrf_meta_tags %>
+</head>
+<body>
+
+<%= yield %>
+
+</body>
 </html>
