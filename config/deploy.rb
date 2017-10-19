@@ -2,7 +2,7 @@
 lock "3.9.1"
 
 set :application, "usa-games"
-set :repo_url, "git@github.com:maromaro0013/usa-games5.git"
+set :repo_url, "https://github.com/maromaro0013/usa-games5.git"
 
 # Default branch is :master
 # ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
