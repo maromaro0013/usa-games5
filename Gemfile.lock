@@ -200,7 +200,6 @@ PLATFORMS
 DEPENDENCIES
   byebug
   capistrano-bundler
-  capistrano-git-with-submodules (~> 2.0)
   coffee-rails (~> 4.2)
   dotenv-rails
   hakoirisolver-rails!
