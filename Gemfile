@@ -59,6 +59,7 @@ gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 # deployment tool
 group :development do
   gem 'capistrano-bundler'
+  gem 'capistrano-rails'
 end
 
 # enviroment setting
