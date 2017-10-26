@@ -1,0 +1,18 @@
+<% content_for :add_css_include do %>
+  <%= stylesheet_link_tag 'webpages/toppage-app', media: 'all' %>
+<% end %>
+<% content_for :add_js_include do %>
+  <%= javascript_include_tag 'webpages/toppage-app' %>
+<% end %>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+
+<ul class="game_links">
+  <li>
+    うさ救出<br>
+    <div><%= link_to("レベル1", "/games/rescue/1") %></div>
+    <div><%= link_to("レベル2", "/games/rescue/2") %></div>
+    <div><%= link_to("レベル3", "/games/rescue/3") %></div>
+  </li>
+</ul>
